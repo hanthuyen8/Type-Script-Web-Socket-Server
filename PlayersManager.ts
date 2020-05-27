@@ -1,5 +1,5 @@
 import WebSocket from "ws";
-import { RegisterData, IdlePlayersData } from "./DataTypes";
+import { RegisterRequest, RegisterResponse, GetIdlePlayersResponse } from "./DataTypes";
 export enum PlayerStatus { Idle, InMatch }
 
 export default class PlayersManager
@@ -9,35 +9,26 @@ export default class PlayersManager
     /** 
      * Tạo mới 1 Player và set nickName cho player này 
      * @returns return về Player đó hoặc null nếu RegisterData không hợp lệ */
-    public newPlayer(id: WebSocket, registerData: string): Player | null
+    public newPlayer(id: WebSocket, registerData: string): string
     {
         if (!registerData || registerData.length === 0)
         {
-            console.log("Invalid Register Data");
-            return null;
+            return JSON.stringify(new RegisterResponse(false, "Invalid Register Data"));
         }
 
-        let data = JSON.parse(registerData) as RegisterData;
+        let data = JSON.parse(registerData) as RegisterRequest;
         if (data && data.nickName)
         {
-            let player = this.players.find(x => x.id === id);
+            let player = this.players.find(x => x.nickName === data.nickName);
             if (!player)
             {
                 player = new Player(id, data.nickName);
                 this.players.push(player);
+                return JSON.stringify(new RegisterResponse(true, "Register Successful"));
             }
-            else
-            {
-                player.nickName = data.nickName;
-                player.status = PlayerStatus.Idle;
-            }
-            return player;
+            return JSON.stringify(new RegisterResponse(true, "This Nick Name Is Already In Use."));
         }
-        else
-        {
-            console.log("Invalid Register Data");
-            return null;
-        }
+        return JSON.stringify(new RegisterResponse(false, "Invalid Register Data"));
     }
 
     /** Xóa Player */
@@ -51,8 +42,8 @@ export default class PlayersManager
     /** Lấy ra danh sách tất cả các Player nào đang Idle */
     public getIdlesPlayers(): string
     {
-        let result = new IdlePlayersData();
-        let list = result.nickNames;
+        let result = new GetIdlePlayersResponse();
+        let list = result.playerNames;
         for (let p of this.players)
         {
             if (p.status === PlayerStatus.Idle)

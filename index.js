@@ -3,30 +3,49 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.NetworkRequest = void 0;
 var ws_1 = __importDefault(require("ws"));
 var http_1 = __importDefault(require("http"));
 var PlayersManager_1 = __importDefault(require("./PlayersManager"));
+var NetworkRequest;
+(function (NetworkRequest) {
+    NetworkRequest[NetworkRequest["Register"] = 0] = "Register";
+    NetworkRequest[NetworkRequest["GetIdlePlayers"] = 1] = "GetIdlePlayers";
+})(NetworkRequest = exports.NetworkRequest || (exports.NetworkRequest = {}));
 var httpServer = http_1.default.createServer(function (request, response) { });
 var wsServer = new ws_1.default.Server({ server: httpServer });
 var playersManager = new PlayersManager_1.default();
 wsServer.on("connection", function (client) {
     client.onmessage = function (message) {
-        if (typeof message.data === "string") {
-            var request = JSON.parse(message.data);
+        var requestData = message.data;
+        if (typeof requestData === "string" && requestData.length > 0) {
+            var request = JSON.parse(requestData);
             if (!request || !request.action)
                 return;
+            var sendback = false;
+            var response = request;
+            var responseData = "";
             switch (request.action) {
-                case "Register":
-                    playersManager.newPlayer(client, request.data);
-                    client.send("Player registered.");
+                case NetworkRequest[NetworkRequest.Register]:
+                    responseData = playersManager.newPlayer(client, request.data);
+                    sendback = true;
                     break;
-                case "Get Idle Players":
-                    var response = request;
-                    response.data = playersManager.getIdlesPlayers();
-                    client.send(JSON.stringify(response));
+                case NetworkRequest[NetworkRequest.GetIdlePlayers]:
+                    responseData = playersManager.getIdlesPlayers();
+                    sendback = true;
                     break;
             }
+            if (sendback) {
+                response.data = responseData;
+                var text = JSON.stringify(response);
+                console.log(text);
+                client.send(text);
+            }
         }
+    };
+    client.onclose = function (event) {
+        console.log("client disconnect");
+        playersManager.removePlayer(client);
     };
 });
 httpServer.listen(55555, function () {
@@ -35,3 +54,4 @@ httpServer.listen(55555, function () {
 // Cách chạy:
 // 1. npx tsc    : biên dịch ts -> js
 // 2. node .     : start server
+//# sourceMappingURL=index.js.map

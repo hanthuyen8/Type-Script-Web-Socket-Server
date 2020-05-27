@@ -4,12 +4,28 @@ export default interface ClientRequestData
     data: string;
 }
 
-export interface RegisterData
+//#region Register Data
+export interface RegisterRequest
 {
     nickName: string;
 }
 
-export class IdlePlayersData
+export class RegisterResponse
 {
-    public nickNames: string[] = [];
+    success: boolean;
+    message: string;
+
+    constructor(success : boolean, message: string)
+    {
+        this.message = message;
+        this.success = success;
+    }
 }
+//#endregion
+
+//#region  Get Idle Player Data
+export class GetIdlePlayersResponse
+{
+    public playerNames: string[] = [];
+}
+//#endregion
