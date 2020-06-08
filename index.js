@@ -3,14 +3,17 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NetworkRequest = void 0;
+exports.SendMessageToClient = exports.NetworkRequest = void 0;
 var ws_1 = __importDefault(require("ws"));
 var http_1 = __importDefault(require("http"));
 var PlayersManager_1 = __importDefault(require("./PlayersManager"));
+var DataTypes_1 = __importDefault(require("./DataTypes"));
 var NetworkRequest;
 (function (NetworkRequest) {
     NetworkRequest[NetworkRequest["Register"] = 0] = "Register";
     NetworkRequest[NetworkRequest["GetIdlePlayers"] = 1] = "GetIdlePlayers";
+    NetworkRequest[NetworkRequest["ChallengeOtherPlayer"] = 2] = "ChallengeOtherPlayer";
+    NetworkRequest[NetworkRequest["ChallengeFromOtherPlayer"] = 3] = "ChallengeFromOtherPlayer";
 })(NetworkRequest = exports.NetworkRequest || (exports.NetworkRequest = {}));
 var httpServer = http_1.default.createServer(function (request, response) { });
 var wsServer = new ws_1.default.Server({ server: httpServer });
@@ -22,24 +25,34 @@ wsServer.on("connection", function (client) {
             var request = JSON.parse(requestData);
             if (!request || !request.action)
                 return;
-            var sendback = false;
+            var sendback = true;
             var response = request;
-            var responseData = "";
+            var responseData = null;
+            console.log("Receiving: " + requestData);
             switch (request.action) {
                 case NetworkRequest[NetworkRequest.Register]:
                     responseData = playersManager.newPlayer(client, request.data);
-                    sendback = true;
                     break;
                 case NetworkRequest[NetworkRequest.GetIdlePlayers]:
                     responseData = playersManager.getIdlesPlayers();
-                    sendback = true;
+                    break;
+                case NetworkRequest[NetworkRequest.ChallengeOtherPlayer]:
+                    responseData = playersManager.challengeOtherPlayer(client, request.data);
+                    if (!responseData)
+                        sendback = false;
+                    break;
+                case NetworkRequest[NetworkRequest.ChallengeFromOtherPlayer]:
+                    playersManager.acceptChallenge(request.data);
+                    break;
+                default:
+                    sendback = false;
                     break;
             }
-            if (sendback) {
+            if (sendback && responseData) {
                 response.data = responseData;
-                var text = JSON.stringify(response);
-                console.log(text);
-                client.send(text);
+                var msg = JSON.stringify(response);
+                console.log("Sending Back: " + msg);
+                client.send(msg);
             }
         }
     };
@@ -48,6 +61,17 @@ wsServer.on("connection", function (client) {
         playersManager.removePlayer(client);
     };
 });
+function SendMessageToClient(client, requestType, data) {
+    if (client.readyState === client.OPEN) {
+        var request = new DataTypes_1.default();
+        request.action = NetworkRequest[requestType];
+        request.data = data;
+        var msg = JSON.stringify(request);
+        console.log("Sending: " + msg);
+        client.send(msg);
+    }
+}
+exports.SendMessageToClient = SendMessageToClient;
 httpServer.listen(55555, function () {
     console.log("Server started at http://localhost:55555");
 });
