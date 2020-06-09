@@ -1,9 +1,7 @@
 import WebSocket from 'ws';
 import http from "http";
 import PlayersManager from './PlayersManager';
-import BaseRequest from "./DataTypes";
-
-export enum NetworkRequest { Register, GetIdlePlayers, Challenge }
+import BaseRequest, { NetworkRequest } from "./DataTypes";
 
 const httpServer = http.createServer((request, response) => { });
 const wsServer = new WebSocket.Server({ server: httpServer });

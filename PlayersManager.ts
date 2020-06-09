@@ -1,8 +1,7 @@
 import WebSocket from "ws";
-import BaseRequest, { CTS_Register, STC_Register, STC_GetIdlePlayers, STC_ChallengeTo, STC_ChallengeFrom, CTS_ChallengeTo, CTS_ChallengeFrom } from "./DataTypes";
-import { NetworkRequest, SendMessageToClient } from ".";
-import Helper from "./Helper";
-export enum PlayerStatus { Idle, InMatch }
+import { CTS_Register, STC_Register, STC_GetIdlePlayers, STC_ChallengeTo, STC_ChallengeFrom, CTS_ChallengeTo, CTS_ChallengeFrom, NetworkRequest, Player, PlayerStatus } from "./DataTypes";
+import { SendMessageToClient } from ".";
+import Game from "./Game";
 
 export default class PlayersManager
 {
@@ -84,20 +83,6 @@ export default class PlayersManager
     }
 }
 
-export class Player
-{
-    public id: WebSocket;
-    public nickName: string;
-    public status: PlayerStatus;
-
-    constructor(id: WebSocket, nickName: string)
-    {
-        this.id = id;
-        this.nickName = nickName;
-        this.status = PlayerStatus.Idle;
-    }
-}
-
 export class Challenge
 {
     // Cách thức hoạt động
@@ -131,14 +116,19 @@ export class Challenge
         let data = this.challenges.get(challengeId);
         if (data)
         {
+            let playerA = data.challenger;
+            let playerB = data.other;
             if (accept)
             {
                 // start game ở cả 2 client
+                let match = JSON.stringify(Game.newMatch(playerA, playerB));
+                SendMessageToClient(playerA.id, NetworkRequest.StartGame, match);
+                SendMessageToClient(playerB.id, NetworkRequest.StartGame, match);
             }
             else
             {
-                let challengeResponse = new STC_ChallengeTo(false, `Người chơi: ${data.other.nickName} không đồng ý thách đấu.`);
-                SendMessageToClient(data.challenger.id, NetworkRequest.Challenge, JSON.stringify(challengeResponse));
+                let challengeResponse = JSON.stringify(new STC_ChallengeTo(false, `Người chơi: ${playerB.nickName} không đồng ý thách đấu.`));
+                SendMessageToClient(playerA.id, NetworkRequest.Challenge, challengeResponse);
             }
             this.challenges.delete(challengeId);
         }
